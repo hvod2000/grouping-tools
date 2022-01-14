@@ -84,7 +84,7 @@ def get_info_from_wikipedia(name):
     except ValueError:
         return MusicAuthorInfo(name, [])
     genres = re.findall(r'title="[^"]*"', html[i:j])
-    genres = list(map(lambda s: s.split("=")[1].strip('"'), genres))
+    genres = [g.split("=")[1].strip('"').replace('/', '-') for g in genres]
     print(page.title, genres)
     return MusicAuthorInfo(page.title, genres)
 
