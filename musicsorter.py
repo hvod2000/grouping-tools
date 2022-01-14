@@ -51,7 +51,8 @@ def tcv2authors(table_path):
     table = Path(table_path).open().read().rstrip('\n').split("\n")
     assert table[0] == AUTHORS_TSV_HEADER
     data = (row.split("\t") for row in table[1:])
-    return {n: MusicAuthorInfo(n, [g.strip() for g in g.split(",")]) for n, g in data}
+    authors = {n: MusicAuthorInfo(n, [g.strip() for g in g.split(",")]) for n, g in data}
+    return {n: MusicAuthorInfo(n, g if '' not in g else []) for n, (_, g) in authors.items()}
 
 def get_info_from_wikipedia(name):
     import wikipedia
