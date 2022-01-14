@@ -1,7 +1,7 @@
 from collections import namedtuple, defaultdict
-from pathlib3x import Path
-#from pathlib import Path
+from pathlib3x import Path # from pathlib import Path
 import re
+import wikipedia
 
 AUTHORS_TSV_HEADER = "author\tgenres"
 MusicAuthorInfo = namedtuple("MusicAuthorInfo", "name genres")
@@ -29,7 +29,7 @@ class Gallery:
         return Gallery(content_dir, {})
 
     def update_list_of_authors(self):
-        for author in (a.name for a in (self.content_dir/"all").iterdir()):
+        for author in (a.name for a in (self.content_dir / "all").iterdir()):
             print(author)
             if author not in self.authors:
                 self.authors[author] = None
@@ -45,43 +45,49 @@ class Gallery:
         genres = defaultdict(set)
         for author, info in sorted(self.authors.items()):
             if info:
-                table.append('\t'.join([author, ', '.join(info.genres)]))
+                table.append("\t".join([author, ", ".join(info.genres)]))
                 for g in info.genres:
                     genres[g].add(author)
         with (self.content_dir / "authors.tsv.part").open("wt") as f:
             f.write("\n".join(table))
-        (self.content_dir / "authors.tsv.part").rename(self.content_dir / "authors.tsv")
+        the_dir = self.content_dir
+        (the_dir / "authors.tsv.part").rename(the_dir / "authors.tsv")
+        linkp = Path("..") / "all"
         for genre, authors in genres.items():
             if (self.content_dir / genre).is_dir():
                 (self.content_dir / genre).rmtree()
             (self.content_dir / genre).mkdir()
             for author in authors:
-                (self.content_dir / genre / author).symlink_to(Path('..') / "all" / author)
+                (the_dir / genre / author).symlink_to(linkp / author)
 
 
 def tcv2authors(table_path):
-    table = Path(table_path).open().read().rstrip('\n').split("\n")
+    table = Path(table_path).open().read().rstrip("\n").split("\n")
     assert table[0] == AUTHORS_TSV_HEADER
     data = (row.split("\t") for row in table[1:])
-    authors = {n: MusicAuthorInfo(n, [g.strip() for g in g.split(",")]) for n, g in data}
-    return {n: MusicAuthorInfo(n, g if '' not in g else []) for n, (_, g) in authors.items()}
+    return {n: MusicAuthorInfo(n, g.split(", ") if g else []) for n, g in data}
+
 
 def get_info_from_wikipedia(name):
-    import wikipedia
     print(f"wiki {name}")
     try:
-        page = wikipedia.page(name + '(band)')
-    except (wikipedia.exceptions.PageError, wikipedia.exceptions.DisambiguationError):
+        page = wikipedia.page(name + "(band)")
+    except (
+        wikipedia.exceptions.PageError,
+        wikipedia.exceptions.DisambiguationError,
+    ):
         return MusicAuthorInfo(name, [])
     html = page.html()
     try:
-        i = html.index('Genres</th><td')
-        j = html.index('</td>', i)
+        i = html.index("Genres</th><td")
+        j = html.index("</td>", i)
     except ValueError:
         return MusicAuthorInfo(name, [])
-    genres = list(map(lambda s: s.split('=')[1].strip('"'), re.findall(r'title="[^"]*"', html[i:j])))
+    genres = re.findall(r'title="[^"]*"', html[i:j])
+    genres = list(map(lambda s: s.split("=")[1].strip('"'), genres))
     print(page.title, genres)
     return MusicAuthorInfo(page.title, genres)
+
 
 if __name__ == "__main__":
     import sys
