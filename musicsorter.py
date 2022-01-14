@@ -1,5 +1,6 @@
-from collections import namedtuple
-from pathlib import Path
+from collections import namedtuple, defaultdict
+from pathlib3x import Path
+#from pathlib import Path
 import re
 
 AUTHORS_TSV_HEADER = "author\tgenres"
@@ -41,11 +42,22 @@ class Gallery:
 
     def save(self):
         table = [AUTHORS_TSV_HEADER]
-        for author, info in self.authors.items():
+        genres = defaultdict(set)
+        for author, info in sorted(self.authors.items()):
             if info:
                 table.append('\t'.join([author, ', '.join(info.genres)]))
-        with (self.content_dir / "authors.tsv").open("wt") as f:
+                for g in info.genres:
+                    genres[g].add(author)
+        with (self.content_dir / "authors.tsv.part").open("wt") as f:
             f.write("\n".join(table))
+        (self.content_dir / "authors.tsv.part").rename(self.content_dir / "authors.tsv")
+        for genre, authors in genres.items():
+            if (self.content_dir / genre).is_dir():
+                (self.content_dir / genre).rmtree()
+            (self.content_dir / genre).mkdir()
+            for author in authors:
+                (self.content_dir / genre / author).symlink_to(Path('..') / "all" / author)
+
 
 def tcv2authors(table_path):
     table = Path(table_path).open().read().rstrip('\n').split("\n")
