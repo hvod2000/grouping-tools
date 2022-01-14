@@ -14,6 +14,19 @@ class Gallery:
         self.authors = authors_info
         self.content_dir = Path(content_dir)
 
+    @staticmethod
+    def from_mess_without_any_info(messy_dir):
+        content_dir = Path(messy_dir)
+        if (content_dir / "authors.tsv").is_file():
+            return Gallery(content_dir)
+        authors = list(sorted(content_dir.iterdir()))
+        (content_dir / "all").mkdir()
+        for author in authors:
+            author.rename(content_dir / "all" / author.name)
+        with (content_dir / "authors.tsv").open("wt") as f:
+            f.write(AUTHORS_TSV_HEADER)
+        return Gallery(content_dir, {})
+
     def update_list_of_authors(self):
         for author in (a.name for a in (self.content_dir/"all").iterdir()):
             print(author)
@@ -21,7 +34,7 @@ class Gallery:
                 self.authors[author] = None
         print(self.authors)
 
-    def updatu_authors_info(self):
+    def update_authors_info(self):
         for author, info in list(self.authors.items()):
             self.authors[author] = info or get_info_from_wikipedia(author)
             self.save()
@@ -56,3 +69,10 @@ def get_info_from_wikipedia(name):
     genres = list(map(lambda s: s.split('=')[1].strip('"'), re.findall(r'title="[^"]*"', html[i:j])))
     print(page.title, genres)
     return MusicAuthorInfo(page.title, genres)
+
+if __name__ == "__main__":
+    import sys
+    g = Gallery.from_mess_without_any_info(sys.argv[1])
+    g.update_list_of_authors()
+    g.update_authors_info()
+    g.save()
